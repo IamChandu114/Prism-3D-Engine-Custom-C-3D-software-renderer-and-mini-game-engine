@@ -1,9 +1,18 @@
-# Build directories
+# Build directories & artifacts
 build/
+build*/
 bin/
 out/
 .cache/
 compile_commands.json
+*.o
+*.obj
+*.exe
+*.a
+*.lib
+*.so
+*.dylib
+*.ppm
 
 # IDE and Editor files
 .vscode/

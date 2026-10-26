@@ -8,6 +8,7 @@ add_executable(prism_math_tests
     test_framebuffer.cpp
     test_pipeline.cpp
     test_rasterizer.cpp
+    test_game.cpp
 )
 
 target_link_libraries(prism_math_tests PRIVATE

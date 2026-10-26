@@ -9,3 +9,7 @@ prism_apply_warnings(rasterizer_demo)
 add_executable(dungeon_crawler ${CMAKE_CURRENT_SOURCE_DIR}/dungeon_crawler/main.cpp)
 target_link_libraries(dungeon_crawler PRIVATE prism_core)
 prism_apply_warnings(dungeon_crawler)
+
+add_executable(benchmark ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/main.cpp)
+target_link_libraries(benchmark PRIVATE prism_core)
+prism_apply_warnings(benchmark)

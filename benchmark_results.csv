@@ -1,0 +1,4 @@
+Stage,TotalTimeMs,FrameTimeMs,FPS,Speedup
+"1. Baseline (Single-Thread, No Culling)",5.99774,0.0999623,10003.8,1
+"+ Frustum Culling",5.32735,0.0887892,11262.6,1.12584
+"+ Batched Multithreaded (4 Threads)",26.2038,0.436729,2289.75,0.228888

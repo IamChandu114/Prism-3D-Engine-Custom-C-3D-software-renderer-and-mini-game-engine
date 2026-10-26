@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace prism::render {
 
@@ -12,7 +12,9 @@ public:
 
     [[nodiscard]] int width() const noexcept { return width_; }
     [[nodiscard]] int height() const noexcept { return height_; }
-    [[nodiscard]] size_t total_pixels() const noexcept { return static_cast<size_t>(width_) * height_; }
+    [[nodiscard]] size_t total_pixels() const noexcept {
+        return static_cast<size_t>(width_) * height_;
+    }
 
     void clear(uint32_t color, float depth = 1.0f) noexcept;
 

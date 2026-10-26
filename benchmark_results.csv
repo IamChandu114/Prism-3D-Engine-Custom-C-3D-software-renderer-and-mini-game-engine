@@ -1,4 +1,28 @@
-Stage,TotalTimeMs,FrameTimeMs,FPS,Speedup
-"1. Baseline (Single-Thread, No Culling)",5.99774,0.0999623,10003.8,1
-"+ Frustum Culling",5.32735,0.0887892,11262.6,1.12584
-"+ Batched Multithreaded (4 Threads)",26.2038,0.436729,2289.75,0.228888
+Scene,Triangles,Optimization,AvgFPS,AvgFrameMs,P95FrameMs,Speedup,PeakMemoryMB
+"10k Triangles",10008,"a) Baseline",132.332,7.55677,20.0581,1,19.25
+"10k Triangles",10008,"b) + Frustum Culling",265.941,3.76023,6.12138,2.00966,19.5
+"10k Triangles",10008,"c) + BVH Spatial Hierarchy",284.412,3.51602,6.26075,2.14924,19.5
+"10k Triangles",10008,"d) + SoA Transforms",322.149,3.10416,5.01441,2.43441,19.5
+"10k Triangles",10008,"f) + Tiled (1 Threads)",460.326,2.17237,3.41449,3.47858,20.625
+"10k Triangles",10008,"f) + Tiled (2 Threads)",443.634,2.25411,3.86408,3.35244,20.6836
+"10k Triangles",10008,"f) + Tiled (4 Threads)",496.617,2.01363,2.92631,3.75282,20.6836
+"10k Triangles",10008,"f) + Tiled (8 Threads)",519.123,1.92632,2.6492,3.9229,20.8086
+"10k Triangles",10008,"f) + Tiled (12 Threads)",509.866,1.9613,2.79228,3.85294,20.8086
+"100k Triangles",100008,"a) Baseline",51.9907,19.2342,28.8352,1,20.8086
+"100k Triangles",100008,"b) + Frustum Culling",65.9115,15.1719,24.3591,1.26776,20.8086
+"100k Triangles",100008,"c) + BVH Spatial Hierarchy",65.2175,15.3333,24.9949,1.25441,20.8086
+"100k Triangles",100008,"d) + SoA Transforms",64.8402,15.4225,25.398,1.24715,20.8086
+"100k Triangles",100008,"f) + Tiled (1 Threads)",88.2135,11.3361,20.5231,1.69672,24.5586
+"100k Triangles",100008,"f) + Tiled (2 Threads)",109.182,9.15901,13.8347,2.10003,24.5586
+"100k Triangles",100008,"f) + Tiled (4 Threads)",119.508,8.36763,11.6529,2.29865,24.5586
+"100k Triangles",100008,"f) + Tiled (8 Threads)",136.173,7.34358,10.811,2.61919,24.5586
+"100k Triangles",100008,"f) + Tiled (12 Threads)",137.981,7.24739,10.0366,2.65395,24.5586
+"500k Triangles",500004,"a) Baseline",11.0544,90.4618,123.787,1,24.5586
+"500k Triangles",500004,"b) + Frustum Culling",17.6414,56.6848,87.6378,1.59587,24.5586
+"500k Triangles",500004,"c) + BVH Spatial Hierarchy",16.5421,60.4519,93.9357,1.49643,24.5586
+"500k Triangles",500004,"d) + SoA Transforms",11.4853,87.0679,245.089,1.03898,24.5586
+"500k Triangles",500004,"f) + Tiled (1 Threads)",7.02697,142.309,1965.96,0.635672,40.3086
+"500k Triangles",500004,"f) + Tiled (2 Threads)",25.6817,38.9383,57.7444,2.32321,40.3086
+"500k Triangles",500004,"f) + Tiled (4 Threads)",30.9241,32.3373,42.7391,2.79744,40.3086
+"500k Triangles",500004,"f) + Tiled (8 Threads)",28.7675,34.7614,46.2582,2.60236,40.3086
+"500k Triangles",500004,"f) + Tiled (12 Threads)",27.5012,36.362,58.3586,2.48781,40.3086

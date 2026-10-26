@@ -1,0 +1,82 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Standard optimized release build",
+      "binaryDir": "${sourceDir}/build-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PRISM_BUILD_TESTS": "ON",
+        "PRISM_BUILD_APPS": "ON",
+        "PRISM_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug build with symbols",
+      "binaryDir": "${sourceDir}/build-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PRISM_BUILD_TESTS": "ON",
+        "PRISM_BUILD_APPS": "ON",
+        "PRISM_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "AddressSanitizer",
+      "description": "Debug build with AddressSanitizer enabled",
+      "binaryDir": "${sourceDir}/build-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PRISM_BUILD_TESTS": "ON",
+        "PRISM_BUILD_APPS": "ON",
+        "PRISM_WARNINGS_AS_ERRORS": "ON",
+        "PRISM_ENABLE_ASAN": "ON"
+      }
+    },
+    {
+      "name": "ubsan",
+      "displayName": "UndefinedBehaviorSanitizer",
+      "description": "Debug build with UndefinedBehaviorSanitizer enabled",
+      "binaryDir": "${sourceDir}/build-ubsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PRISM_BUILD_TESTS": "ON",
+        "PRISM_BUILD_APPS": "ON",
+        "PRISM_WARNINGS_AS_ERRORS": "ON",
+        "PRISM_ENABLE_UBSAN": "ON"
+      }
+    },
+    {
+      "name": "tsan",
+      "displayName": "ThreadSanitizer",
+      "description": "Debug build with ThreadSanitizer enabled",
+      "binaryDir": "${sourceDir}/build-tsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PRISM_BUILD_TESTS": "ON",
+        "PRISM_BUILD_APPS": "ON",
+        "PRISM_WARNINGS_AS_ERRORS": "ON",
+        "PRISM_ENABLE_TSAN": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "release" },
+    { "name": "debug",   "configurePreset": "debug" },
+    { "name": "asan",    "configurePreset": "asan" },
+    { "name": "ubsan",   "configurePreset": "ubsan" },
+    { "name": "tsan",    "configurePreset": "tsan" }
+  ],
+  "testPresets": [
+    { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
+    { "name": "debug",   "configurePreset": "debug",   "output": { "outputOnFailure": true } },
+    { "name": "asan",    "configurePreset": "asan",    "output": { "outputOnFailure": true } },
+    { "name": "ubsan",   "configurePreset": "ubsan",   "output": { "outputOnFailure": true } },
+    { "name": "tsan",    "configurePreset": "tsan",    "output": { "outputOnFailure": true } }
+  ]
+}

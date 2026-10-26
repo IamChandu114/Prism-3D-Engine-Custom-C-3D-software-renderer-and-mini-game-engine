@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include <prism/render/pipeline.hpp>
-#include <prism/math/transform.hpp>
 #include <prism/math/constants.hpp>
+#include <prism/math/transform.hpp>
+#include <prism/render/pipeline.hpp>
 
 using namespace prism::math;
 using namespace prism::render;
@@ -14,7 +14,8 @@ TEST(PipelineTest, ExplicitNamedSpacesTransformation) {
 
     // Matrices
     Mat4 model_matrix = translate(Vec3(0.0f, 0.0f, -5.0f));
-    Mat4 view_matrix = look_at(Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, 1.0f, 0.0f));
+    Mat4 view_matrix =
+        look_at(Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, 1.0f, 0.0f));
     Mat4 proj_matrix = perspective(deg_to_rad(90.0f), 1.0f, 1.0f, 100.0f);
 
     // 2. Transform to World Space

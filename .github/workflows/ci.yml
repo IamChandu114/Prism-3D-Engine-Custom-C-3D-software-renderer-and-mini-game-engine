@@ -7,60 +7,130 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test:
+  clang-format-check:
+    name: Code Formatting Check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Run clang-format
+      run: |
+        sudo apt-get update && sudo apt-get install -y clang-format
+        find include src apps tests -name '*.hpp' -o -name '*.cpp' | xargs clang-format --dry-run --Werror
 
-    - name: Install Dependencies
+  build-and-test:
+    name: Build & Test (${{ matrix.os }}, ${{ matrix.compiler }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            c_compiler: gcc
+            cxx_compiler: g++
+          - os: ubuntu-latest
+            compiler: clang
+            c_compiler: clang
+            cxx_compiler: clang++
+          - os: windows-latest
+            compiler: msvc
+            c_compiler: cl
+            cxx_compiler: cl
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache FetchContent
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/_deps
+          build-release/_deps
+        key: ${{ runner.os }}-${{ matrix.compiler }}-fetchcontent-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.compiler }}-fetchcontent-
+
+    - name: Install Dependencies (Linux)
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake g++ libsdl2-dev python3 python3-pip
+        sudo apt-get install -y cmake libsdl2-dev python3 python3-pip
 
-    - name: Configure CMake (Release)
+    - name: Configure CMake (Linux)
+      if: runner.os == 'Linux'
       run: |
         cmake -B build -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx_compiler }} \
           -DPRISM_BUILD_TESTS=ON \
           -DPRISM_BUILD_APPS=ON \
           -DPRISM_WARNINGS_AS_ERRORS=ON
 
+    - name: Configure CMake (Windows MSVC Headless)
+      if: runner.os == 'Windows'
+      run: |
+        # On Windows CI runner, SDL2 windowing is skipped via headless build mode
+        cmake -B build -DCMAKE_BUILD_TYPE=Release `
+          -DPRISM_BUILD_TESTS=ON `
+          -DPRISM_BUILD_APPS=ON `
+          -DPRISM_HEADLESS=ON `
+          -DPRISM_WARNINGS_AS_ERRORS=ON
+
     - name: Build All Targets
-      run: cmake --build build -j$(nproc)
+      run: cmake --build build --config Release -j2
 
     - name: Run Unit Tests
-      run: ctest --test-dir build --output-on-failure
+      run: ctest --test-dir build -C Release --output-on-failure
 
-    - name: Run Headless Demos
+    - name: Run Headless Demos & Quick Benchmark
+      if: runner.os == 'Linux'
       run: |
         ./build/apps/wireframe_demo --headless 5
         ./build/apps/rasterizer_demo --headless 5
         ./build/apps/dungeon_crawler --headless 5
-        ./build/apps/benchmark
+        ./build/apps/benchmark --quick
 
-  sanitizers:
+  sanitizers-asan-ubsan:
+    name: ASan + UBSan
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y cmake g++ libsdl2-dev
+        sudo apt-get update && sudo apt-get install -y cmake g++ libsdl2-dev
 
-    - name: Configure CMake (ASan + UBSan)
+    - name: Configure ASan + UBSan
       run: |
-        cmake -B build-san -DCMAKE_BUILD_TYPE=Debug \
-          -DPRISM_BUILD_TESTS=ON \
-          -DPRISM_BUILD_APPS=ON \
-          -DPRISM_WARNINGS_AS_ERRORS=ON \
-          -DPRISM_ENABLE_ASAN=ON \
-          -DPRISM_ENABLE_UBSAN=ON
+        cmake --preset asan
 
-    - name: Build Sanitizer Targets
-      run: cmake --build build-san -j$(nproc)
+    - name: Build ASan Targets
+      run: cmake --build --preset asan -j$(nproc)
 
-    - name: Run Tests with Sanitizers
+    - name: Run Tests with ASan + UBSan
       env:
         ASAN_OPTIONS: "detect_leaks=1:abort_on_error=1"
         UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
-      run: ctest --test-dir build-san --output-on-failure
+      run: ctest --preset asan
+
+  sanitizers-tsan:
+    name: ThreadSanitizer (TSan)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y cmake g++ libsdl2-dev
+
+    - name: Configure TSan
+      run: |
+        cmake --preset tsan
+
+    - name: Build TSan Targets
+      run: cmake --build --preset tsan -j$(nproc)
+
+    - name: Run Tests with TSan
+      env:
+        TSAN_OPTIONS: "halt_on_error=1:abort_on_error=1"
+      run: ctest --preset tsan

@@ -1,11 +1,11 @@
-#include <prism/render/loader.hpp>
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <string>
 #include <charconv>
-#include <stdexcept>
 #include <cstring>
+#include <fstream>
+#include <prism/render/loader.hpp>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace prism::render {
 
@@ -15,7 +15,8 @@ using namespace math;
 
 std::vector<Triangle> load_obj(const std::string& filepath) {
     std::ifstream file(filepath);
-    if (!file) return {};
+    if (!file)
+        return {};
 
     std::vector<Vec3> positions;
     std::vector<Vec2> texcoords;
@@ -28,7 +29,8 @@ std::vector<Triangle> load_obj(const std::string& filepath) {
 
     std::string line;
     while (std::getline(file, line)) {
-        if (line.empty() || line[0] == '#') continue;
+        if (line.empty() || line[0] == '#')
+            continue;
 
         std::istringstream ss(line);
         std::string token;
@@ -58,8 +60,10 @@ std::vector<Triangle> load_obj(const std::string& filepath) {
                 int slash1 = -1, slash2 = -1;
                 for (int i = 0; i < static_cast<int>(part.size()); ++i) {
                     if (part[i] == '/') {
-                        if (slash1 < 0) slash1 = i;
-                        else slash2 = i;
+                        if (slash1 < 0)
+                            slash1 = i;
+                        else
+                            slash2 = i;
                     }
                 }
                 fv.vi = std::atoi(part.c_str());
@@ -71,9 +75,12 @@ std::vector<Triangle> load_obj(const std::string& filepath) {
                     fv.ni = std::atoi(part.c_str() + slash2 + 1);
                 }
                 // Handle negative indices
-                if (fv.vi < 0) fv.vi = static_cast<int>(positions.size()) + fv.vi;
-                if (fv.ti < 0) fv.ti = static_cast<int>(texcoords.size()) + fv.ti;
-                if (fv.ni < 0) fv.ni = static_cast<int>(normals.size()) + fv.ni;
+                if (fv.vi < 0)
+                    fv.vi = static_cast<int>(positions.size()) + fv.vi;
+                if (fv.ti < 0)
+                    fv.ti = static_cast<int>(texcoords.size()) + fv.ti;
+                if (fv.ni < 0)
+                    fv.ni = static_cast<int>(normals.size()) + fv.ni;
                 face_verts.push_back(fv);
             }
 
@@ -85,18 +92,19 @@ std::vector<Triangle> load_obj(const std::string& filepath) {
                     const auto& fv = face_verts[indices[k]];
                     int vi = (fv.vi >= 1 && fv.vi < static_cast<int>(positions.size())) ? fv.vi : 0;
                     int ti = (fv.ti >= 1 && fv.ti < static_cast<int>(texcoords.size())) ? fv.ti : 0;
-                    int ni = (fv.ni >= 1 && fv.ni < static_cast<int>(normals.size()))   ? fv.ni : 0;
+                    int ni = (fv.ni >= 1 && fv.ni < static_cast<int>(normals.size())) ? fv.ni : 0;
                     t.v[k].position = positions[vi];
-                    t.v[k].uv       = texcoords[ti];
-                    t.v[k].normal   = normals[ni];
-                    t.v[k].color    = Vec3(1.0f, 1.0f, 1.0f);
+                    t.v[k].uv = texcoords[ti];
+                    t.v[k].normal = normals[ni];
+                    t.v[k].color = Vec3(1.0f, 1.0f, 1.0f);
                 }
                 // If no normals, compute face normal
                 if (face_verts[0].ni == 0) {
                     Vec3 e1 = t.v[1].position - t.v[0].position;
                     Vec3 e2 = t.v[2].position - t.v[0].position;
                     Vec3 n = normalize(cross(e1, e2));
-                    for (int k = 0; k < 3; ++k) t.v[k].normal = n;
+                    for (int k = 0; k < 3; ++k)
+                        t.v[k].normal = n;
                 }
                 triangles.push_back(t);
             }
@@ -110,15 +118,18 @@ std::vector<Triangle> load_obj(const std::string& filepath) {
 
 TextureData load_ppm(const std::string& filepath) {
     std::ifstream file(filepath, std::ios::binary);
-    if (!file) return {};
+    if (!file)
+        return {};
 
     std::string magic;
     file >> magic;
-    if (magic != "P6") return {};
+    if (magic != "P6")
+        return {};
 
     int width = 0, height = 0, max_val = 0;
     file >> width >> height >> max_val;
-    if (width <= 0 || height <= 0 || max_val <= 0) return {};
+    if (width <= 0 || height <= 0 || max_val <= 0)
+        return {};
     file.get(); // consume newline
 
     TextureData td;
@@ -134,8 +145,8 @@ TextureData load_ppm(const std::string& filepath) {
         uint8_t r = static_cast<uint8_t>(rgb[i * 3 + 0] * scale);
         uint8_t g = static_cast<uint8_t>(rgb[i * 3 + 1] * scale);
         uint8_t b = static_cast<uint8_t>(rgb[i * 3 + 2] * scale);
-        td.pixels[i] = (0xFFu << 24) | (static_cast<uint32_t>(r) << 16) |
-                       (static_cast<uint32_t>(g) << 8) | b;
+        td.pixels[i] =
+            (0xFFu << 24) | (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | b;
     }
     return td;
 }
@@ -148,7 +159,8 @@ TextureData make_checkerboard(int size, uint32_t c0, uint32_t c1) {
     td.height = size;
     td.pixels.resize(static_cast<size_t>(size) * size);
     int cell = size / 8;
-    if (cell < 1) cell = 1;
+    if (cell < 1)
+        cell = 1;
     for (int y = 0; y < size; ++y) {
         for (int x = 0; x < size; ++x) {
             bool checker = ((x / cell) + (y / cell)) % 2 == 0;

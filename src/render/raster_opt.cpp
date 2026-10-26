@@ -1,36 +1,33 @@
+#include <algorithm>
+#include <future>
 #include <prism/render/raster_opt.hpp>
 #include <prism/render/simd_raster.hpp>
-#include <vector>
-#include <future>
 #include <thread>
-#include <algorithm>
+#include <vector>
 
 namespace prism::render {
 
 using namespace math;
 
 // Rasterize triangle clamped to a specific vertical band [band_y_min, band_y_max]
-static void rasterize_triangle_band(Framebuffer& fb,
-                                    const ScreenSpaceVertex& v0,
-                                    const ScreenSpaceVertex& v1,
-                                    const ScreenSpaceVertex& v2,
-                                    const Material& material,
-                                    const std::vector<Light>& lights,
-                                    const Vec3& camera_pos,
-                                    ShadingMode shading,
-                                    int band_y_min,
+static void rasterize_triangle_band(Framebuffer& fb, const ScreenSpaceVertex& v0,
+                                    const ScreenSpaceVertex& v1, const ScreenSpaceVertex& v2,
+                                    const Material& material, const std::vector<Light>& lights,
+                                    const Vec3& camera_pos, ShadingMode shading, int band_y_min,
                                     int band_y_max) noexcept {
     int x_min = std::max(0, static_cast<int>(std::floor(std::min({v0.x, v1.x, v2.x}))));
-    int x_max = std::min(fb.width()  - 1, static_cast<int>(std::ceil(std::max({v0.x, v1.x, v2.x}))));
+    int x_max = std::min(fb.width() - 1, static_cast<int>(std::ceil(std::max({v0.x, v1.x, v2.x}))));
     int y_min = std::max(band_y_min, static_cast<int>(std::floor(std::min({v0.y, v1.y, v2.y}))));
     int y_max = std::min(band_y_max, static_cast<int>(std::ceil(std::max({v0.y, v1.y, v2.y}))));
 
-    if (x_min > x_max || y_min > y_max) return;
+    if (x_min > x_max || y_min > y_max)
+        return;
 
     // Delegate to standard triangle rasterizer logic restricted to y_min..y_max
     // Fast inline path:
     float area = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
-    if (area <= 0.0f) return;
+    if (area <= 0.0f)
+        return;
     float inv_area = 1.0f / area;
 
     for (int y = y_min; y <= y_max; ++y) {
@@ -42,16 +39,19 @@ static void rasterize_triangle_band(Framebuffer& fb,
             float w1 = ((v0.x - v2.x) * (py - v2.y) - (v0.y - v2.y) * (px - v2.x)) * inv_area;
             float w2 = ((v1.x - v0.x) * (py - v0.y) - (v1.y - v0.y) * (px - v0.x)) * inv_area;
 
-            if (w0 < 0.0f || w1 < 0.0f || w2 < 0.0f) continue;
+            if (w0 < 0.0f || w1 < 0.0f || w2 < 0.0f)
+                continue;
 
             float depth = w0 * v0.z + w1 * v1.z + w2 * v2.z;
-            if (depth >= fb.get_depth(x, y)) continue;
+            if (depth >= fb.get_depth(x, y))
+                continue;
 
             float iw0 = w0 * v0.inv_w;
             float iw1 = w1 * v1.inv_w;
             float iw2 = w2 * v2.inv_w;
             float iw_sum = iw0 + iw1 + iw2;
-            if (iw_sum < kEps) continue;
+            if (iw_sum < kEps)
+                continue;
             float inv_iw = 1.0f / iw_sum;
             float c0 = iw0 * inv_iw;
             float c1 = iw1 * inv_iw;
@@ -64,18 +64,21 @@ static void rasterize_triangle_band(Framebuffer& fb,
             Vec3 lit = material.ambient;
             for (const Light& light : lights) {
                 Vec3 l_dir = (light.type == LightType::Directional)
-                    ? normalize(-light.direction_or_position)
-                    : normalize(light.direction_or_position - frag_pos);
+                                 ? normalize(-light.direction_or_position)
+                                 : normalize(light.direction_or_position - frag_pos);
                 float ndotl = std::max(dot(n, l_dir), 0.0f);
                 Vec3 h = normalize(l_dir + view_dir);
                 float ndoth = std::max(dot(n, h), 0.0f);
-                lit = lit + (material.diffuse * ndotl + material.specular * std::pow(ndoth, material.shininess)) * light.color * light.intensity;
+                lit = lit + (material.diffuse * ndotl +
+                             material.specular * std::pow(ndoth, material.shininess)) *
+                                light.color * light.intensity;
             }
 
             uint8_t r = static_cast<uint8_t>(clamp(lit.x, 0.0f, 1.0f) * 255.0f);
             uint8_t g = static_cast<uint8_t>(clamp(lit.y, 0.0f, 1.0f) * 255.0f);
             uint8_t b = static_cast<uint8_t>(clamp(lit.z, 0.0f, 1.0f) * 255.0f);
-            uint32_t col = (0xFFu << 24) | (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) | b;
+            uint32_t col = (0xFFu << 24) | (static_cast<uint32_t>(r) << 16) |
+                           (static_cast<uint32_t>(g) << 8) | b;
 
             fb.set_pixel(x, y, col);
             fb.depth_data()[static_cast<size_t>(y) * fb.width() + x] = depth;
@@ -84,12 +87,9 @@ static void rasterize_triangle_band(Framebuffer& fb,
     (void)shading;
 }
 
-void draw_scene_multithreaded(Framebuffer& fb,
-                              const std::vector<RenderMeshInstance>& instances,
-                              const Camera& camera,
-                              const Material& material,
-                              const std::vector<Light>& lights,
-                              const RenderConfig& config,
+void draw_scene_multithreaded(Framebuffer& fb, const std::vector<RenderMeshInstance>& instances,
+                              const Camera& camera, const Material& material,
+                              const std::vector<Light>& lights, const RenderConfig& config,
                               int num_threads) noexcept {
     Mat4 view = camera.view_matrix();
     Mat4 proj = camera.proj_matrix();
@@ -103,7 +103,8 @@ void draw_scene_multithreaded(Framebuffer& fb,
     all_screen_tris.reserve(instances.size() * 12);
 
     for (const auto& inst : instances) {
-        if (!inst.mesh) continue;
+        if (!inst.mesh)
+            continue;
         for (const Triangle& tri : *inst.mesh) {
             ClipSpaceVertex cv[3];
             for (int k = 0; k < 3; ++k) {
@@ -117,10 +118,12 @@ void draw_scene_multithreaded(Framebuffer& fb,
                 Vec3 a = cv[0].position.xyz();
                 Vec3 b = cv[1].position.xyz();
                 Vec3 c = cv[2].position.xyz();
-                if (cross(b - a, c - a).z <= 0.0f) continue;
+                if (cross(b - a, c - a).z <= 0.0f)
+                    continue;
             }
 
-            if (cv[0].position.w <= 0.0f || cv[1].position.w <= 0.0f || cv[2].position.w <= 0.0f) continue;
+            if (cv[0].position.w <= 0.0f || cv[1].position.w <= 0.0f || cv[2].position.w <= 0.0f)
+                continue;
 
             ScreenTri st;
             for (int k = 0; k < 3; ++k) {
@@ -133,7 +136,8 @@ void draw_scene_multithreaded(Framebuffer& fb,
 
     if (num_threads <= 1 || all_screen_tris.empty()) {
         for (const auto& st : all_screen_tris) {
-            rasterize_triangle(fb, st.v[0], st.v[1], st.v[2], material, lights, camera.position, config.shading);
+            rasterize_triangle(fb, st.v[0], st.v[1], st.v[2], material, lights, camera.position,
+                               config.shading);
         }
         return;
     }
@@ -144,12 +148,15 @@ void draw_scene_multithreaded(Framebuffer& fb,
 
     for (int t = 0; t < num_threads; ++t) {
         int y_start = t * stripe_height;
-        int y_end   = std::min((t + 1) * stripe_height - 1, H - 1);
-        if (y_start > y_end) break;
+        int y_end = std::min((t + 1) * stripe_height - 1, H - 1);
+        if (y_start > y_end)
+            break;
 
-        futures.push_back(std::async(std::launch::async, [&fb, &all_screen_tris, &material, &lights, &camera, &config, y_start, y_end]() {
+        futures.push_back(std::async(std::launch::async, [&fb, &all_screen_tris, &material, &lights,
+                                                          &camera, &config, y_start, y_end]() {
             for (const auto& st : all_screen_tris) {
-                rasterize_triangle_band(fb, st.v[0], st.v[1], st.v[2], material, lights, camera.position, config.shading, y_start, y_end);
+                rasterize_triangle_band(fb, st.v[0], st.v[1], st.v[2], material, lights,
+                                        camera.position, config.shading, y_start, y_end);
             }
         }));
     }
@@ -159,14 +166,10 @@ void draw_scene_multithreaded(Framebuffer& fb,
     }
 }
 
-void draw_triangles_multithreaded(Framebuffer& fb,
-                                  const std::vector<Triangle>& triangles,
-                                  const Mat4& model_matrix,
-                                  const Camera& camera,
-                                  const Material& material,
-                                  const std::vector<Light>& lights,
-                                  const RenderConfig& config,
-                                  int num_threads) noexcept {
+void draw_triangles_multithreaded(Framebuffer& fb, const std::vector<Triangle>& triangles,
+                                  const Mat4& model_matrix, const Camera& camera,
+                                  const Material& material, const std::vector<Light>& lights,
+                                  const RenderConfig& config, int num_threads) noexcept {
     RenderMeshInstance inst;
     inst.mesh = &triangles;
     inst.model_matrix = model_matrix;

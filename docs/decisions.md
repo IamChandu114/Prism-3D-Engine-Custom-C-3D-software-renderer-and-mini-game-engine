@@ -56,3 +56,19 @@ This document logs significant architectural and design choices made during the 
 - **Consequences**:
   - Every single pixel, triangle, normal, and lighting reflection is calculated entirely by our CPU code.
   - Headless mode (`--headless N`) bypasses SDL2 entirely, enabling headless execution on headless CI runners.
+
+---
+
+## ADR 0006: Zero-Allocation ThreadPool via Type-Erased Work-Stealing
+- **Status**: Accepted
+- **Context**: The initial `ThreadPool::parallel_for` used `std::queue<std::function<void()>>`. Each call to enqueue a task requires wrapping the lambda closure in a `std::function`, which performs a heap allocation whenever the closure is larger than the SBO (Small Buffer Optimisation) threshold (~16-32 bytes). This caused 2 heap allocations per `render_scene_tiled` call (one per chunk pushed to the queue), failing the `MemoryTest.ZeroHeapAllocationsDuringRenderLoopAfterWarmup` requirement.
+- **Decision**: Redesigned `parallel_for` around a single type-erased job slot:
+  1. The callable is stored as a `void*` pointer to the caller's stack frame (safe because `parallel_for` blocks until complete).
+  2. A static lambda trampoline casts it back and invokes it: `void (*invoker)(void*, int)`.
+  3. Workers atomically claim individual indices via `job_next_.fetch_add(1)` — classic work-stealing without a queue.
+  4. A `generation_` counter wakes workers per-batch; a `job_finished_` atomic signals completion.
+  - Zero `std::function` objects created = zero heap allocations in the hot path.
+- **Consequences**:
+  - `MemoryTest.ZeroHeapAllocationsDuringRenderLoopAfterWarmup` passes: 0 heap allocations during 5 consecutive render frames.
+  - `parallel_for` is not re-entrant (nested calls will deadlock); acceptable since our render loop is single-level.
+  - Workers busy-spin briefly between batches rather than sleeping deeply (fine for real-time rendering).

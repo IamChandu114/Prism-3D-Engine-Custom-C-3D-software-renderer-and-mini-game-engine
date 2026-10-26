@@ -1,28 +1,28 @@
 #include <prism/core/window.hpp>
-#include <prism/render/framebuffer.hpp>
-#include <prism/render/rasterizer.hpp>
-#include <prism/render/camera.hpp>
-#include <prism/render/loader.hpp>
+#include <prism/math/constants.hpp>
 #include <prism/math/quaternion.hpp>
 #include <prism/math/transform.hpp>
-#include <prism/math/constants.hpp>
+#include <prism/render/camera.hpp>
+#include <prism/render/framebuffer.hpp>
+#include <prism/render/loader.hpp>
+#include <prism/render/rasterizer.hpp>
 
-#include <cstdio>
-#include <string>
 #include <chrono>
-#include <cstring>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <string>
 
 using namespace prism;
 using namespace prism::math;
 using namespace prism::render;
 
-static constexpr int kWidth  = 800;
+static constexpr int kWidth = 800;
 static constexpr int kHeight = 600;
 
 int main(int argc, char* argv[]) {
     bool headless = false;
-    int  headless_frames = 0;
+    int headless_frames = 0;
 
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--headless") == 0 && i + 1 < argc) {
@@ -35,21 +35,21 @@ int main(int argc, char* argv[]) {
 
     Camera camera;
     camera.position = Vec3(0.0f, 1.0f, 3.2f);
-    camera.aspect   = static_cast<float>(kWidth) / kHeight;
-    camera.fov_y    = deg_to_rad(60.0f);
-    camera.near_z   = 0.1f;
-    camera.far_z    = 100.0f;
+    camera.aspect = static_cast<float>(kWidth) / kHeight;
+    camera.fov_y = deg_to_rad(60.0f);
+    camera.near_z = 0.1f;
+    camera.far_z = 100.0f;
 
     auto mesh = make_cube();
     auto texture = make_checkerboard(256, 0xFFE0E0E0, 0xFF4040A0);
 
     Material mat;
-    mat.ambient   = Vec3(0.08f, 0.08f, 0.12f);
-    mat.diffuse   = Vec3(0.85f, 0.85f, 0.90f);
-    mat.specular  = Vec3(0.9f, 0.9f, 0.9f);
+    mat.ambient = Vec3(0.08f, 0.08f, 0.12f);
+    mat.diffuse = Vec3(0.85f, 0.85f, 0.90f);
+    mat.specular = Vec3(0.9f, 0.9f, 0.9f);
     mat.shininess = 32.0f;
-    mat.texture_data   = texture.pixels.data();
-    mat.texture_width  = texture.width;
+    mat.texture_data = texture.pixels.data();
+    mat.texture_width = texture.width;
     mat.texture_height = texture.height;
 
     // Lights: 1 directional (sun) + 1 dynamic point light (orbiting fire)
@@ -82,7 +82,8 @@ int main(int argc, char* argv[]) {
     int fps_frame_count = 0;
 
     while (window.is_running()) {
-        if (headless && frame_count >= headless_frames) break;
+        if (headless && frame_count >= headless_frames)
+            break;
 
         auto t_now = std::chrono::high_resolution_clock::now();
         double dt = std::chrono::duration<double>(t_now - t_prev).count();
@@ -102,16 +103,18 @@ int main(int argc, char* argv[]) {
         sim_time += dt;
 
         // Animate model rotation
-        Quat rot_y = Quat::from_axis_angle(Vec3(0.0f, 1.0f, 0.0f), static_cast<float>(sim_time) * 0.8f);
-        Quat rot_x = Quat::from_axis_angle(Vec3(1.0f, 0.0f, 0.0f), static_cast<float>(sim_time) * 0.4f);
+        Quat rot_y =
+            Quat::from_axis_angle(Vec3(0.0f, 1.0f, 0.0f), static_cast<float>(sim_time) * 0.8f);
+        Quat rot_x =
+            Quat::from_axis_angle(Vec3(1.0f, 0.0f, 0.0f), static_cast<float>(sim_time) * 0.4f);
         Mat4 model = (rot_y * rot_x).to_mat4();
 
         // Orbit dynamic point light
         float orbit_radius = 2.0f;
-        lights[1].direction_or_position = Vec3(
-            std::cos(static_cast<float>(sim_time) * 1.5f) * orbit_radius,
-            0.5f + std::sin(static_cast<float>(sim_time) * 2.0f) * 0.5f,
-            std::sin(static_cast<float>(sim_time) * 1.5f) * orbit_radius);
+        lights[1].direction_or_position =
+            Vec3(std::cos(static_cast<float>(sim_time) * 1.5f) * orbit_radius,
+                 0.5f + std::sin(static_cast<float>(sim_time) * 2.0f) * 0.5f,
+                 std::sin(static_cast<float>(sim_time) * 1.5f) * orbit_radius);
 
         fb.clear(0xFF141419);
 
@@ -120,16 +123,20 @@ int main(int argc, char* argv[]) {
 
         // Overlay HUD
         char buf[128];
-        std::snprintf(buf, sizeof(buf), "FPS: %.0f (%.2f ms) | Tris: %zu", fps, frame_ms, mesh.size());
+        std::snprintf(buf, sizeof(buf), "FPS: %.0f (%.2f ms) | Tris: %zu", fps, frame_ms,
+                      mesh.size());
         fb.draw_string(10, 10, buf, 0xFF00FFCC, 1);
 
-        const char* shading_str = (config.shading == ShadingMode::Flat) ? "Flat" :
-                                  (config.shading == ShadingMode::Gouraud) ? "Gouraud" : "Blinn-Phong";
-        std::snprintf(buf, sizeof(buf), "Shading: %s | Culling: %s | Depth: %s",
-                      shading_str, config.backface_culling ? "ON" : "OFF", config.depth_test ? "ON" : "OFF");
+        const char* shading_str = (config.shading == ShadingMode::Flat)      ? "Flat"
+                                  : (config.shading == ShadingMode::Gouraud) ? "Gouraud"
+                                                                             : "Blinn-Phong";
+        std::snprintf(buf, sizeof(buf), "Shading: %s | Culling: %s | Depth: %s", shading_str,
+                      config.backface_culling ? "ON" : "OFF", config.depth_test ? "ON" : "OFF");
         fb.draw_string(10, 24, buf, 0xFFFFAA00, 1);
 
-        fb.draw_string(10, 38, "Features: Sutherland-Hodgman Clip | Persp-Correct UV/Normal | Blinn-Phong", 0xFFAAAAAA, 1);
+        fb.draw_string(10, 38,
+                       "Features: Sutherland-Hodgman Clip | Persp-Correct UV/Normal | Blinn-Phong",
+                       0xFFAAAAAA, 1);
 
         if (headless) {
             char path[64];

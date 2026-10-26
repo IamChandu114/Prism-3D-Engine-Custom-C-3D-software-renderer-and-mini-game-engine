@@ -1,15 +1,15 @@
 #pragma once
 
+#include <cstdint>
+#include <functional>
+#include <prism/math/geometry.hpp>
 #include <prism/math/vec2.hpp>
 #include <prism/math/vec3.hpp>
 #include <prism/math/vec4.hpp>
-#include <prism/math/geometry.hpp>
+#include <prism/render/camera.hpp>
 #include <prism/render/framebuffer.hpp>
 #include <prism/render/pipeline.hpp>
-#include <prism/render/camera.hpp>
 #include <vector>
-#include <cstdint>
-#include <functional>
 
 namespace prism::render {
 
@@ -57,37 +57,24 @@ struct RenderConfig {
 };
 
 // Draw wireframe triangle via Bresenham
-void draw_wireframe_triangle(Framebuffer& fb,
-                             const ScreenSpaceVertex& v0,
-                             const ScreenSpaceVertex& v1,
-                             const ScreenSpaceVertex& v2,
+void draw_wireframe_triangle(Framebuffer& fb, const ScreenSpaceVertex& v0,
+                             const ScreenSpaceVertex& v1, const ScreenSpaceVertex& v2,
                              uint32_t color) noexcept;
 
 // Barycentric rasterizer with depth test, perspective-correct interpolation, Blinn-Phong
-void rasterize_triangle(Framebuffer& fb,
-                        const ScreenSpaceVertex& v0,
-                        const ScreenSpaceVertex& v1,
-                        const ScreenSpaceVertex& v2,
-                        const Material& material,
-                        const std::vector<Light>& lights,
-                        const math::Vec3& camera_pos,
+void rasterize_triangle(Framebuffer& fb, const ScreenSpaceVertex& v0, const ScreenSpaceVertex& v1,
+                        const ScreenSpaceVertex& v2, const Material& material,
+                        const std::vector<Light>& lights, const math::Vec3& camera_pos,
                         ShadingMode shading) noexcept;
 
 // Full pipeline: triangles -> framebuffer
-void draw_triangles(Framebuffer& fb,
-                    const std::vector<Triangle>& triangles,
-                    const math::Mat4& model_matrix,
-                    const Camera& camera,
-                    const Material& material,
-                    const std::vector<Light>& lights,
-                    const RenderConfig& config) noexcept;
+void draw_triangles(Framebuffer& fb, const std::vector<Triangle>& triangles,
+                    const math::Mat4& model_matrix, const Camera& camera, const Material& material,
+                    const std::vector<Light>& lights, const RenderConfig& config) noexcept;
 
 // Draw a wireframe-only mesh (Stage 2 mode)
-void draw_wireframe(Framebuffer& fb,
-                    const std::vector<Triangle>& triangles,
-                    const math::Mat4& model_matrix,
-                    const Camera& camera,
-                    uint32_t color) noexcept;
+void draw_wireframe(Framebuffer& fb, const std::vector<Triangle>& triangles,
+                    const math::Mat4& model_matrix, const Camera& camera, uint32_t color) noexcept;
 
 // Build a unit cube mesh (12 triangles)
 [[nodiscard]] std::vector<Triangle> make_cube() noexcept;

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <prism/math/mat4.hpp>
 #include <prism/math/vec2.hpp>
 #include <prism/math/vec3.hpp>
 #include <prism/math/vec4.hpp>
-#include <prism/math/mat4.hpp>
 
 namespace prism::render {
 
@@ -49,10 +49,8 @@ struct ScreenSpaceVertex {
 };
 
 // 1. Model -> World
-[[nodiscard]] inline WorldSpaceVertex transform_model_to_world(
-    const ModelSpaceVertex& v,
-    const math::Mat4& model_matrix
-) noexcept {
+[[nodiscard]] inline WorldSpaceVertex
+transform_model_to_world(const ModelSpaceVertex& v, const math::Mat4& model_matrix) noexcept {
     WorldSpaceVertex out;
     out.position = (model_matrix * math::Vec4(v.position, 1.0f)).xyz();
     // Assuming uniform scale or pure rotation for normal
@@ -62,10 +60,8 @@ struct ScreenSpaceVertex {
 }
 
 // 2. World -> View
-[[nodiscard]] inline ViewSpaceVertex transform_world_to_view(
-    const WorldSpaceVertex& v,
-    const math::Mat4& view_matrix
-) noexcept {
+[[nodiscard]] inline ViewSpaceVertex
+transform_world_to_view(const WorldSpaceVertex& v, const math::Mat4& view_matrix) noexcept {
     ViewSpaceVertex out;
     out.position = (view_matrix * math::Vec4(v.position, 1.0f)).xyz();
     out.normal = math::normalize((view_matrix * math::Vec4(v.normal, 0.0f)).xyz());
@@ -74,10 +70,8 @@ struct ScreenSpaceVertex {
 }
 
 // 3. View -> Clip
-[[nodiscard]] inline ClipSpaceVertex transform_view_to_clip(
-    const ViewSpaceVertex& v,
-    const math::Mat4& proj_matrix
-) noexcept {
+[[nodiscard]] inline ClipSpaceVertex
+transform_view_to_clip(const ViewSpaceVertex& v, const math::Mat4& proj_matrix) noexcept {
     ClipSpaceVertex out;
     out.position = proj_matrix * math::Vec4(v.position, 1.0f);
     out.normal = v.normal;
@@ -86,9 +80,7 @@ struct ScreenSpaceVertex {
 }
 
 // 4. Clip -> NDC (Perspective Division)
-[[nodiscard]] inline NDCSpaceVertex transform_clip_to_ndc(
-    const ClipSpaceVertex& v
-) noexcept {
+[[nodiscard]] inline NDCSpaceVertex transform_clip_to_ndc(const ClipSpaceVertex& v) noexcept {
     NDCSpaceVertex out;
     float inv_w = (std::abs(v.position.w) > 1e-6f) ? (1.0f / v.position.w) : 1.0f;
     out.position = math::Vec3(v.position.x * inv_w, v.position.y * inv_w, v.position.z * inv_w);
@@ -99,11 +91,8 @@ struct ScreenSpaceVertex {
 }
 
 // 5. NDC -> Screen
-[[nodiscard]] inline ScreenSpaceVertex transform_ndc_to_screen(
-    const NDCSpaceVertex& v,
-    int width,
-    int height
-) noexcept {
+[[nodiscard]] inline ScreenSpaceVertex transform_ndc_to_screen(const NDCSpaceVertex& v, int width,
+                                                               int height) noexcept {
     ScreenSpaceVertex out;
     // Map [-1, 1] to [0, width - 1]
     out.x = (v.position.x + 1.0f) * 0.5f * static_cast<float>(width - 1);

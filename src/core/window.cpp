@@ -1,6 +1,6 @@
+#include <cstring>
 #include <prism/core/window.hpp>
 #include <prism/render/framebuffer.hpp>
-#include <cstring>
 
 #if defined(PRISM_HEADLESS)
 // Headless mode: no SDL
@@ -18,23 +18,22 @@ Window::Window(const std::string& title, int width, int height, bool headless)
             is_running_ = false;
             return;
         }
-        window_ = SDL_CreateWindow(
-            title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            width_, height_, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+        window_ = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                   width_, height_, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
         if (!window_) {
             is_running_ = false;
             return;
         }
-        renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        renderer_ =
+            SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         if (!renderer_) {
             SDL_DestroyWindow(window_);
             window_ = nullptr;
             is_running_ = false;
             return;
         }
-        texture_ = SDL_CreateTexture(
-            renderer_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-            width_, height_);
+        texture_ = SDL_CreateTexture(renderer_, SDL_PIXELFORMAT_ARGB8888,
+                                     SDL_TEXTUREACCESS_STREAMING, width_, height_);
         if (!texture_) {
             SDL_DestroyRenderer(renderer_);
             SDL_DestroyWindow(window_);
@@ -66,8 +65,8 @@ Window::~Window() {
 
 Window::Window(Window&& other) noexcept
     : width_(other.width_), height_(other.height_), headless_(other.headless_),
-      is_running_(other.is_running_), window_(other.window_),
-      renderer_(other.renderer_), texture_(other.texture_) {
+      is_running_(other.is_running_), window_(other.window_), renderer_(other.renderer_),
+      texture_(other.texture_) {
     other.window_ = nullptr;
     other.renderer_ = nullptr;
     other.texture_ = nullptr;
@@ -93,7 +92,8 @@ Window& Window::operator=(Window&& other) noexcept {
 
 void Window::poll_events() noexcept {
 #if !defined(PRISM_HEADLESS)
-    if (headless_) return;
+    if (headless_)
+        return;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
@@ -107,7 +107,8 @@ void Window::poll_events() noexcept {
 
 void Window::present(const render::Framebuffer& fb) noexcept {
 #if !defined(PRISM_HEADLESS)
-    if (headless_ || !texture_) return;
+    if (headless_ || !texture_)
+        return;
     void* pixels = nullptr;
     int pitch = 0;
     if (SDL_LockTexture(texture_, nullptr, &pixels, &pitch) == 0) {
@@ -119,8 +120,7 @@ void Window::present(const render::Framebuffer& fb) noexcept {
         // SDL ARGB8888: A at bits 31-24, R at 23-16, G at 15-8, B at 7-0 (same layout)
         for (int y = 0; y < fb.height(); ++y) {
             std::memcpy(dst + static_cast<size_t>(y) * pitch,
-                        src + static_cast<size_t>(y) * row_bytes,
-                        static_cast<size_t>(row_bytes));
+                        src + static_cast<size_t>(y) * row_bytes, static_cast<size_t>(row_bytes));
         }
         SDL_UnlockTexture(texture_);
         SDL_RenderCopy(renderer_, texture_, nullptr, nullptr);

@@ -1,18 +1,18 @@
-#include <prism/render/framebuffer.hpp>
-#include <prism/render/font.hpp>
-#include <fstream>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <prism/render/font.hpp>
+#include <prism/render/framebuffer.hpp>
 
 namespace prism::render {
 
 namespace {
 // Cohen-Sutherland outcode flags
 constexpr int kInside = 0; // 0000
-constexpr int kLeft   = 1; // 0001
-constexpr int kRight  = 2; // 0010
+constexpr int kLeft = 1;   // 0001
+constexpr int kRight = 2;  // 0010
 constexpr int kBottom = 4; // 0100
-constexpr int kTop    = 8; // 1000
+constexpr int kTop = 8;    // 1000
 
 int compute_outcode(int x, int y, int x_min, int y_min, int x_max, int y_max) noexcept {
     int code = kInside;
@@ -82,8 +82,7 @@ bool clip_line(int& x0, int& y0, int& x1, int& y1, int width, int height) noexce
 } // namespace
 
 Framebuffer::Framebuffer(int width, int height)
-    : width_(width),
-      height_(height),
+    : width_(width), height_(height),
       color_buffer_(static_cast<size_t>(width) * height, 0x00000000),
       depth_buffer_(static_cast<size_t>(width) * height, 1.0f) {}
 
@@ -136,7 +135,8 @@ void Framebuffer::draw_char(int start_x, int start_y, char c, uint32_t color, in
     }
 }
 
-void Framebuffer::draw_string(int x, int y, const std::string& text, uint32_t color, int scale) noexcept {
+void Framebuffer::draw_string(int x, int y, const std::string& text, uint32_t color,
+                              int scale) noexcept {
     int cur_x = x;
     int cur_y = y;
     int spacing = (BitmapFont::kCharWidth + 1) * scale;
@@ -164,13 +164,15 @@ bool Framebuffer::save_ppm(const std::string& filepath) const {
 
     for (size_t i = 0; i < color_buffer_.size(); ++i) {
         uint32_t pixel = color_buffer_[i];
-        // Standard RGBA32 format: (R = pixel & 0xFF), (G = (pixel >> 8) & 0xFF), (B = (pixel >> 16) & 0xFF)
+        // Standard RGBA32 format: (R = pixel & 0xFF), (G = (pixel >> 8) & 0xFF), (B = (pixel >> 16)
+        // & 0xFF)
         rgb_bytes[i * 3 + 0] = static_cast<uint8_t>((pixel >> 16) & 0xFF); // R
-        rgb_bytes[i * 3 + 1] = static_cast<uint8_t>((pixel >> 8)  & 0xFF); // G
-        rgb_bytes[i * 3 + 2] = static_cast<uint8_t>(pixel         & 0xFF); // B
+        rgb_bytes[i * 3 + 1] = static_cast<uint8_t>((pixel >> 8) & 0xFF);  // G
+        rgb_bytes[i * 3 + 2] = static_cast<uint8_t>(pixel & 0xFF);         // B
     }
 
-    out.write(reinterpret_cast<const char*>(rgb_bytes.data()), static_cast<std::streamsize>(rgb_bytes.size()));
+    out.write(reinterpret_cast<const char*>(rgb_bytes.data()),
+              static_cast<std::streamsize>(rgb_bytes.size()));
     return true;
 }
 

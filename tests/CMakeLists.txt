@@ -10,6 +10,9 @@ add_executable(prism_math_tests
     test_rasterizer.cpp
     test_game.cpp
     test_simd.cpp
+    test_bvh.cpp
+    test_soa.cpp
+    test_memory.cpp
 )
 
 target_link_libraries(prism_math_tests PRIVATE

@@ -95,24 +95,49 @@ graph TD
   - Real-time HUD: mini-map with player position and facing indicator, crosshair, score, and FPS counter.
 
 ### Stage 5: Performance Engineering Suite
-- Frustum culling using Gribb-Hartmann plane extraction and AABB intersection test.
+- Frustum culling using Gribb-Hartmann plane extraction and AABB intersection test ($2.01\times$ speedup).
 - Vectorized SIMD (SSE/AVX) 4-wide edge function evaluation with portable scalar fallback and unit tests verifying numerical equivalence.
-- Multithreaded striped rasterizer dividing the screen into parallel horizontal bands with zero data race or lock contention.
-- Zero-heap allocation during rendering via pre-allocated scratch buffers.
+- Bounding Volume Hierarchy (BVH) with Surface Area Heuristic (SAH) and fast spatial queries (`query_frustum`, `query_raycast`, `query_sphere`).
+- Structure-of-Arrays (SoA) vertex layout with batched 4-wide SIMD coordinate transformations.
+- Zero-heap allocation during rendering via pre-allocated scratch buffers (`tests/test_memory.cpp`).
+
+### Stage 6: Tile-Based Multithreading & Memory Engineering
+- **Tile-Based Rasterization**: Screen partitioned into $64 \times 64$ pixel bins ($20 \times 12 = 240$ tiles at 720p). Each tile fits within the CPU L1 data cache (16 KB color + 16 KB depth $\le$ 32 KB L1D), avoiding cache thrashing.
+- **Persistent Zero-Heap Thread Pool**: Custom lock-free/latch worker thread pool that reuses threads across frames with zero heap allocations per dispatch.
+- **Zero-Allocation Steady-State Loop**: Verified via global `operator new` interception that 0 heap allocations occur during continuous rendering.
+- **Real-Time Scaling**: Achieves **519.1 FPS** on 10k triangles and **30.9 FPS** on 500k triangles at 1280x720 with Blinn-Phong shading.
 
 ---
 
 ## Empirical Performance Benchmarks
 
-Measured on Linux x86_64 (WSL2 Ubuntu 24.04, GCC 13.3 `-O3`) rendering 27 rotating cubes (324 triangles) at 640x480 resolution with Blinn-Phong lighting:
+Measured on native Linux x86_64 (`/home/chand/prism_bench/` on WSL2 Ubuntu 24.04, GCC 13.3 `-O3`, 12th Gen Intel Core i5-1235U, 12 threads) rendering procedural 3D cube grids at **1280 × 720** resolution with Blinn-Phong shading and depth testing:
 
-| Optimization Stage | Total Time (60 frames) | Avg Frame Time | Avg FPS | Speedup vs Baseline | Notes |
-|:---|---:|---:|---:|---:|:---|
-| **1. Baseline** (Scalar, Single-Thread, No Culling) | 6.0 ms | 0.10 ms | 10,003 FPS | 1.00x | Pure scalar software pipeline |
-| **2. + Frustum Culling** (Gribb-Hartmann extraction) | 5.3 ms | 0.09 ms | 11,262 FPS | **1.13x** | $O(1)$ rejection of off-screen objects |
-| **3. + Multi-threaded Horizontal Stripes** (4 Threads) | 26.2 ms | 0.44 ms | 2,289 FPS | 0.23x | Thread dispatch overhead dominates on sub-millisecond workloads |
+### 1. 10,000 Triangles (10,008 Tris / 834 Cube Instances)
+| Optimization Stage | Avg Frame Time | Avg FPS | P95 Frame Time | Speedup vs Baseline | Peak Memory |
+|:---|---:|---:|---:|---:|---:|
+| **a) Baseline** (Scalar, 1-Thread, No Culling) | 7.56 ms | 132.3 FPS | 20.06 ms | 1.00x | 19.2 MB |
+| **b) + Frustum Culling** (Gribb-Hartmann) | 3.76 ms | 265.9 FPS | 6.12 ms | **2.01x** | 19.5 MB |
+| **c) + BVH Spatial Hierarchy** | 3.52 ms | 284.4 FPS | 6.26 ms | **2.15x** | 19.5 MB |
+| **d) + SoA Vertex Layout & Transform** | 3.10 ms | 322.1 FPS | 5.01 ms | **2.43x** | 19.5 MB |
+| **f) + Tiled Multithreaded (8 Threads)** | **1.93 ms** | **519.1 FPS** | **2.65 ms** | **3.92x** | 20.8 MB |
 
-*Note on Multithreading: On sub-millisecond workloads (0.10 ms/frame), thread creation and dispatch overhead (~0.1 ms) exceeds the workload duration—a classic demonstration of Amdahl's Law and the necessity of persistent thread pools for micro-tasks.*
+### 2. 100,000 Triangles (100,008 Tris / 8,334 Cube Instances)
+| Optimization Stage | Avg Frame Time | Avg FPS | P95 Frame Time | Speedup vs Baseline | Peak Memory |
+|:---|---:|---:|---:|---:|---:|
+| **a) Baseline** (Scalar, 1-Thread, No Culling) | 19.23 ms | 52.0 FPS | 28.84 ms | 1.00x | 20.8 MB |
+| **b) + Frustum Culling** (Gribb-Hartmann) | 15.17 ms | 65.9 FPS | 24.36 ms | **1.27x** | 20.8 MB |
+| **c) + BVH Spatial Hierarchy** | 15.33 ms | 65.2 FPS | 24.99 ms | **1.25x** | 20.8 MB |
+| **f) + Tiled Multithreaded (12 Threads)** | **7.25 ms** | **138.0 FPS** | **10.04 ms** | **2.65x** | 24.6 MB |
+
+### 3. 500,000 Triangles (500,004 Tris / 41,667 Cube Instances)
+| Optimization Stage | Avg Frame Time | Avg FPS | P95 Frame Time | Speedup vs Baseline | Peak Memory |
+|:---|---:|---:|---:|---:|---:|
+| **a) Baseline** (Scalar, 1-Thread, No Culling) | 90.46 ms | 11.1 FPS | 123.79 ms | 1.00x | 24.6 MB |
+| **b) + Frustum Culling** (Gribb-Hartmann) | 56.68 ms | 17.6 FPS | 87.64 ms | **1.60x** | 24.6 MB |
+| **f) + Tiled Multithreaded (4 Threads)** | **32.34 ms** | **30.9 FPS** | **42.74 ms** | **2.80x** | 40.3 MB |
+
+*Full CSV dataset with complete thread sweeps (1, 2, 4, 8, 12 threads) available in [`benchmark_results.csv`](benchmark_results.csv) and [`docs/performance.md`](docs/performance.md).*
 
 ---
 
@@ -138,7 +163,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release \
 # Build all targets in parallel
 cmake --build build -j$(nproc)
 
-# Run full unit test suite (102 tests)
+# Run full unit test suite (112 tests)
 ./build/tests/prism_math_tests
 ```
 
@@ -153,7 +178,7 @@ cmake --build build -j$(nproc)
 # 3. Playable 3D Dungeon Crawler (Stage 4)
 ./build/apps/dungeon_crawler
 
-# 4. Optimization benchmark suite (Stage 5)
+# 4. Comprehensive optimization benchmark suite (Stage 5-6)
 ./build/apps/benchmark
 ```
 
@@ -167,7 +192,7 @@ python3 scripts/generate_gif.py --pattern "dungeon_frame_*.ppm" --output dungeon
 ---
 
 ## Testing & Quality Assurance
-- **102 / 102 Unit Tests Passing (100% Green)** across vectors, matrices, transforms, quaternions, geometry, intersections, framebuffers, coordinate pipelines, rasterization, game physics, and SIMD equivalence.
+- **112 / 112 Unit Tests Passing (100% Green)** across vectors, matrices, transforms, quaternions, geometry, intersections, framebuffers, coordinate pipelines, rasterization, game physics, SIMD equivalence, BVH queries, SoA transforms, and zero-heap memory verification.
 - **Strict Compiler Warnings**: Built with `-Wall -Wextra -Wpedantic -Werror` (GCC/Clang) and `/W4 /WX` (MSVC).
 - **Sanitizers**: Verified with AddressSanitizer (ASan) and UndefinedBehaviorSanitizer (UBSan) with zero leaks and zero undefined behaviors.
 - **Automated CI**: GitHub Actions workflow builds and tests on every commit.

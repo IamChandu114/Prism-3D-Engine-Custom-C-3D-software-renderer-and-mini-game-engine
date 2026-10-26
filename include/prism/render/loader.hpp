@@ -1,12 +1,12 @@
 #pragma once
 
-#include <prism/math/vec3.hpp>
-#include <prism/math/mat4.hpp>
-#include <prism/render/rasterizer.hpp>
-#include <prism/render/framebuffer.hpp>
 #include <functional>
-#include <vector>
+#include <prism/math/mat4.hpp>
+#include <prism/math/vec3.hpp>
+#include <prism/render/framebuffer.hpp>
+#include <prism/render/rasterizer.hpp>
 #include <string>
+#include <vector>
 
 namespace prism::render {
 
@@ -28,6 +28,7 @@ struct TextureData {
 [[nodiscard]] TextureData load_ppm(const std::string& filepath);
 
 // ── Procedural textures ────────────────────────────────────────────────────────
-[[nodiscard]] TextureData make_checkerboard(int size, uint32_t c0 = 0xFFFFFFFF, uint32_t c1 = 0xFF333333);
+[[nodiscard]] TextureData make_checkerboard(int size, uint32_t c0 = 0xFFFFFFFF,
+                                            uint32_t c1 = 0xFF333333);
 
 } // namespace prism::render

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <prism/math/vec3.hpp>
 #include <prism/math/vec4.hpp>
-#include <cstdint>
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #include <immintrin.h>
@@ -38,11 +38,11 @@ struct SimdEdge4 {
                                                      float py) noexcept {
 #if PRISM_HAS_SIMD
     // Vectorized 4-wide edge function using SSE/AVX
-    __m128 v_dx    = _mm_set1_ps(bx - ax);
-    __m128 v_dy    = _mm_set1_ps(by - ay);
+    __m128 v_dx = _mm_set1_ps(bx - ax);
+    __m128 v_dy = _mm_set1_ps(by - ay);
     __m128 v_py_ay = _mm_set1_ps(py - ay);
-    __m128 v_ax    = _mm_set1_ps(ax);
-    __m128 v_px    = _mm_set_ps(px3, px2, px1, px0); // [px0, px1, px2, px3]
+    __m128 v_ax = _mm_set1_ps(ax);
+    __m128 v_px = _mm_set_ps(px3, px2, px1, px0); // [px0, px1, px2, px3]
 
     __m128 term1 = _mm_mul_ps(v_dx, v_py_ay);
     __m128 term2 = _mm_mul_ps(v_dy, _mm_sub_ps(v_px, v_ax));

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <prism/math/vec3.hpp>
+#include <prism/math/constants.hpp>
 #include <prism/math/mat4.hpp>
 #include <prism/math/quaternion.hpp>
 #include <prism/math/transform.hpp>
-#include <prism/math/constants.hpp>
+#include <prism/math/vec3.hpp>
 
 namespace prism::render {
 

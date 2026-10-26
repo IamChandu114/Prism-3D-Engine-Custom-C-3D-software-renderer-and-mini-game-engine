@@ -142,6 +142,15 @@ void rasterize_triangle(Framebuffer& fb,
         flat_color = vec3_to_rgba(lit);
     }
 
+    // Gouraud shading: pre-compute lighting at the 3 vertices
+    Vec3 gouraud_c0, gouraud_c1, gouraud_c2;
+    if (shading == ShadingMode::Gouraud) {
+        Vec3 p0(v0.x, v0.y, v0.z), p1(v1.x, v1.y, v1.z), p2(v2.x, v2.y, v2.z);
+        gouraud_c0 = blinn_phong(p0, v0.normal, normalize(camera_pos - p0), material, lights);
+        gouraud_c1 = blinn_phong(p1, v1.normal, normalize(camera_pos - p1), material, lights);
+        gouraud_c2 = blinn_phong(p2, v2.normal, normalize(camera_pos - p2), material, lights);
+    }
+
     for (int y = y_min; y <= y_max; ++y) {
         for (int x = x_min; x <= x_max; ++x) {
             float px = static_cast<float>(x) + 0.5f;
@@ -175,12 +184,19 @@ void rasterize_triangle(Framebuffer& fb,
             uint32_t pixel_color;
             if (shading == ShadingMode::Flat) {
                 pixel_color = flat_color;
+            } else if (shading == ShadingMode::Gouraud) {
+                Vec3 lit = gouraud_c0 * c0 + gouraud_c1 * c1 + gouraud_c2 * c2;
+                if (material.texture_data) {
+                    Vec2 uv = v0.uv * c0 + v1.uv * c1 + v2.uv * c2;
+                    lit = lit * sample_texture_bilinear(
+                        material.texture_data, material.texture_width, material.texture_height, uv.x, uv.y);
+                }
+                pixel_color = vec3_to_rgba(lit);
             } else {
-                // Perspective-correct normal and UV
+                // Perspective-correct normal and UV (Phong)
                 Vec3 n = normalize(v0.normal * c0 + v1.normal * c1 + v2.normal * c2);
                 Vec2 uv = v0.uv * c0 + v1.uv * c1 + v2.uv * c2;
 
-                // Reconstruct approximate world pos from screen pos (simple approximation)
                 Vec3 frag_pos = Vec3(static_cast<float>(x), static_cast<float>(y), depth);
                 Vec3 view_dir = normalize(camera_pos - frag_pos);
 

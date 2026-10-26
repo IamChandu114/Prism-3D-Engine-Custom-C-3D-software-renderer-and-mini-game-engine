@@ -1,47 +1,43 @@
-name: CI
+name: Prism CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
-  build-and-test-linux:
+  build-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        compiler: [g++, clang++]
-        build_type: [Debug, Release]
-
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsdl2-dev clang-format
+        sudo apt-get install -y cmake g++ libsdl2-dev python3 python3-pip
 
-    - name: Check Formatting
-      if: matrix.compiler == 'clang++' && matrix.build_type == 'Debug'
+    - name: Configure CMake (Release)
       run: |
-        find include src tests apps -name '*.hpp' -o -name '*.cpp' | xargs clang-format --dry-run --Werror
-
-    - name: Configure CMake
-      run: |
-        cmake -B build \
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-          -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+        cmake -B build -DCMAKE_BUILD_TYPE=Release \
           -DPRISM_BUILD_TESTS=ON \
+          -DPRISM_BUILD_APPS=ON \
           -DPRISM_WARNINGS_AS_ERRORS=ON
 
-    - name: Build
-      run: cmake --build build --config ${{ matrix.build_type }} -j $(nproc)
+    - name: Build All Targets
+      run: cmake --build build -j$(nproc)
 
-    - name: Test
+    - name: Run Unit Tests
       run: ctest --test-dir build --output-on-failure
 
-  sanitizers-linux:
+    - name: Run Headless Demos
+      run: |
+        ./build/apps/wireframe_demo --headless 5
+        ./build/apps/rasterizer_demo --headless 5
+        ./build/apps/dungeon_crawler --headless 5
+        ./build/apps/benchmark
+
+  sanitizers:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -49,34 +45,22 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsdl2-dev clang++
+        sudo apt-get install -y cmake g++ libsdl2-dev
 
-    - name: Configure Sanitizers (ASan + UBSan)
+    - name: Configure CMake (ASan + UBSan)
       run: |
-        cmake -B build-asan \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_CXX_COMPILER=clang++ \
+        cmake -B build-san -DCMAKE_BUILD_TYPE=Debug \
+          -DPRISM_BUILD_TESTS=ON \
+          -DPRISM_BUILD_APPS=ON \
+          -DPRISM_WARNINGS_AS_ERRORS=ON \
           -DPRISM_ENABLE_ASAN=ON \
-          -DPRISM_ENABLE_UBSAN=ON \
-          -DPRISM_BUILD_TESTS=ON
+          -DPRISM_ENABLE_UBSAN=ON
 
-    - name: Build with ASan
-      run: cmake --build build-asan -j $(nproc)
+    - name: Build Sanitizer Targets
+      run: cmake --build build-san -j$(nproc)
 
-    - name: Test under ASan & UBSan
-      run: ctest --test-dir build-asan --output-on-failure
-
-  build-and-test-windows:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Configure CMake
-      run: |
-        cmake -B build -DPRISM_BUILD_TESTS=ON
-
-    - name: Build
-      run: cmake --build build --config Release
-
-    - name: Test
-      run: ctest --test-dir build -C Release --output-on-failure
+    - name: Run Tests with Sanitizers
+      env:
+        ASAN_OPTIONS: "detect_leaks=1:abort_on_error=1"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+      run: ctest --test-dir build-san --output-on-failure

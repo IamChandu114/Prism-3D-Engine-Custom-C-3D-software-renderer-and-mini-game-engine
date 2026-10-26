@@ -1,0 +1,24 @@
+# Build directories
+build/
+bin/
+out/
+.cache/
+compile_commands.json
+
+# IDE and Editor files
+.vscode/
+.vs/
+*.swp
+*.swo
+.DS_Store
+
+# CMake temporary files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+_deps/
+
+# OS specific
+Thumbs.db

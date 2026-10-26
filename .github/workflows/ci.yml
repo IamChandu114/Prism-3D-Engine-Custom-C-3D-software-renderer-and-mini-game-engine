@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [g++, clang++]
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsdl2-dev clang-format
+
+    - name: Check Formatting
+      if: matrix.compiler == 'clang++' && matrix.build_type == 'Debug'
+      run: |
+        find include src tests apps -name '*.hpp' -o -name '*.cpp' | xargs clang-format --dry-run --Werror
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+          -DPRISM_BUILD_TESTS=ON \
+          -DPRISM_WARNINGS_AS_ERRORS=ON
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }} -j $(nproc)
+
+    - name: Test
+      run: ctest --test-dir build --output-on-failure
+
+  sanitizers-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsdl2-dev clang++
+
+    - name: Configure Sanitizers (ASan + UBSan)
+      run: |
+        cmake -B build-asan \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_COMPILER=clang++ \
+          -DPRISM_ENABLE_ASAN=ON \
+          -DPRISM_ENABLE_UBSAN=ON \
+          -DPRISM_BUILD_TESTS=ON
+
+    - name: Build with ASan
+      run: cmake --build build-asan -j $(nproc)
+
+    - name: Test under ASan & UBSan
+      run: ctest --test-dir build-asan --output-on-failure
+
+  build-and-test-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -DPRISM_BUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Test
+      run: ctest --test-dir build -C Release --output-on-failure

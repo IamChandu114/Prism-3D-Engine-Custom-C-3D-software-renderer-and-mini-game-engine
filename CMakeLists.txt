@@ -57,6 +57,7 @@ add_library(prism_render STATIC
     src/render/loader.cpp
     src/render/raster_opt.cpp
     src/render/tile_rasterizer.cpp
+    src/render/postprocess.cpp
 )
 target_include_directories(prism_render PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

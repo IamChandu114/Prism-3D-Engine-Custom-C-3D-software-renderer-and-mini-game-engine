@@ -16,7 +16,7 @@ Modern game developers often rely on high-level APIs like DirectX 12, Vulkan, or
 - **Every dot product, matrix inverse, quaternion slerp, Cohen-Sutherland clip, Sutherland-Hodgman polygon clip, barycentric edge function, depth test, and Blinn-Phong reflection is written entirely from scratch in clean, modern C++17.**
 - **SDL2 is used strictly for window creation, keyboard/mouse input polling, and presenting a raw CPU pixel buffer.**
 
----
+
 
 ## Architecture Overview
 
@@ -102,7 +102,7 @@ graph TD
 - Zero-heap allocation during rendering via pre-allocated scratch buffers (`tests/test_memory.cpp`).
 
 ### Stage 6: Tile-Based Multithreading & Memory Engineering
-- **Tile-Based Rasterization**: Screen partitioned into $64 \times 64$ pixel bins ($20 \times 12 = 240$ tiles at 720p). Each tile fits within the CPU L1 data cache (16 KB color + 16 KB depth $\le$ 32 KB L1D), avoiding cache thrashing.
+- **Tile-Based Rasterization**: Screen partitioned into $64 \times 64$ pixel bins ($20 \times 12 = 240$ tiles at 720p). Each tile fits within the CPU L1 data cache (16 KB color + 16 KB depth $\le$ 32 KB L1D), avoiding cache thrashing
 - **Persistent Zero-Heap Thread Pool**: Custom lock-free/latch worker thread pool that reuses threads across frames with zero heap allocations per dispatch.
 - **Zero-Allocation Steady-State Loop**: Verified via global `operator new` interception that 0 heap allocations occur during continuous rendering.
 - **Real-Time Scaling**: Achieves **519.1 FPS** on 10k triangles and **30.9 FPS** on 500k triangles at 1280x720 with Blinn-Phong shading.

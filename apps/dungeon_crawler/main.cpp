@@ -8,6 +8,7 @@
 #include <prism/render/camera.hpp>
 #include <prism/render/framebuffer.hpp>
 #include <prism/render/loader.hpp>
+#include <prism/render/postprocess.hpp>
 #include <prism/render/rasterizer.hpp>
 
 #if !defined(PRISM_HEADLESS)
@@ -81,11 +82,11 @@ int main(int argc, char* argv[]) {
 
     auto cube_mesh = make_cube();
 
-    // Textures
-    auto wall_tex = make_checkerboard(128, 0xFF888899, 0xFF444455);
-    auto floor_tex = make_checkerboard(128, 0xFF555566, 0xFF222233);
-    auto gem_tex = make_checkerboard(64, 0xFFFFDD44, 0xFFFF8800);
-    auto enemy_tex = make_checkerboard(64, 0xFFFF2222, 0xFF881111);
+    // Procedural Textures
+    auto wall_tex = make_stone_wall_texture(256);
+    auto floor_tex = make_flagstone_floor_texture(256);
+    auto gem_tex = make_glowing_crystal_texture(128);
+    auto enemy_tex = make_scifi_metal_texture(128);
 
     Material wall_mat;
     wall_mat.ambient = Vec3(0.06f, 0.06f, 0.09f);
@@ -198,6 +199,38 @@ int main(int argc, char* argv[]) {
 
     const int total_crystals = static_cast<int>(crystals.size());
 
+    // Visual Effects & Post-Processing Setup
+    PostProcessor post_processor;
+    post_processor.init(kWidth, kHeight);
+    PostProcessConfig post_cfg;
+    post_cfg.enable_fog = true;
+    post_cfg.fog_near = 2.0f;
+    post_cfg.fog_far = 13.5f;
+    post_cfg.fog_color = 0xFF0D0D14; // Atmospheric midnight dungeon mist
+    post_cfg.enable_bloom = true;
+    post_cfg.bloom_threshold = 0.58f;
+    post_cfg.bloom_intensity = 0.65f;
+    post_cfg.enable_vignette = true;
+    post_cfg.vignette_radius = 0.70f;
+    post_cfg.vignette_softness = 0.50f;
+    post_cfg.enable_color_grade = true;
+    post_cfg.contrast = 1.16f;
+    post_cfg.saturation = 1.15f;
+    post_cfg.exposure = 1.05f;
+
+    struct DustMote {
+        Vec3 pos;
+        float seed;
+    };
+    std::vector<DustMote> particles;
+    particles.reserve(80);
+    for (int i = 0; i < 80; ++i) {
+        float px = static_cast<float>((i * 13) % 16 - 8) * 0.9f;
+        float py = 0.2f + static_cast<float>((i * 7) % 15) * 0.1f;
+        float pz = static_cast<float>((i * 23) % 16 - 8) * 0.9f;
+        particles.push_back({Vec3(px, py, pz), static_cast<float>(i)});
+    }
+
     RenderConfig config;
     config.shading = ShadingMode::Phong;
     config.backface_culling = true;
@@ -222,6 +255,9 @@ int main(int argc, char* argv[]) {
 
         auto t_now = std::chrono::high_resolution_clock::now();
         double dt = std::chrono::duration<double>(t_now - t_prev).count();
+        if (headless)
+            dt = kFixedDeltaTime; // Deterministic scripted playback advances one fixed tick per
+                                  // rendered frame.
         if (dt > 0.25)
             dt = 0.25; // Clamp for stability
         t_prev = t_now;
@@ -391,14 +427,24 @@ int main(int argc, char* argv[]) {
             draw_triangles(fb, cube_mesh, wm, camera, wall_mat, lights, config);
         }
 
-        // Render crystals
-        for (const auto& g : crystals) {
+        // Render crystals with dynamic floating bob & pulsating point lights
+        for (auto& g : crystals) {
             if (!g.active)
                 continue;
-            Quat rot =
+            float bob = std::sin(static_cast<float>(sim_time) * 3.0f + g.position.x) * 0.10f;
+            Vec3 pos = g.position + Vec3(0.0f, bob, 0.0f);
+            Quat rot_y =
                 Quat::from_axis_angle(Vec3(0.0f, 1.0f, 0.0f), static_cast<float>(sim_time) * 2.5f);
-            Mat4 gm = translate(g.position) * rot.to_mat4() * scale(g.extents * 2.0f);
+            Quat rot_z = Quat::from_axis_angle(Vec3(0.707f, 0.0f, 0.707f), 0.35f);
+            Mat4 gm = translate(pos) * (rot_y * rot_z).to_mat4() * scale(g.extents * 2.0f);
             draw_triangles(fb, cube_mesh, gm, camera, gem_mat, lights, config);
+
+            // Modulate attached light position and pulsating intensity
+            if (g.light_index >= 0 && static_cast<size_t>(g.light_index) < lights.size()) {
+                lights[g.light_index].direction_or_position = pos;
+                lights[g.light_index].intensity =
+                    2.2f + 0.6f * std::sin(static_cast<float>(sim_time) * 4.0f + g.position.z);
+            }
         }
 
         // Render Enemy
@@ -407,6 +453,39 @@ int main(int argc, char* argv[]) {
         Mat4 em = translate(render_enemy_pos) * enemy_rot.to_mat4() *
                   scale(Vec3(enemy.radius * 2.0f, 0.8f, enemy.radius * 2.0f));
         draw_triangles(fb, cube_mesh, em, camera, enemy_mat, lights, config);
+
+        // 3D Floating Dust / Ember Particles
+        Mat4 vp = camera.proj_matrix() * camera.view_matrix();
+        for (auto& p : particles) {
+            p.pos.y += static_cast<float>(dt) * 0.25f;
+            if (p.pos.y > 1.8f)
+                p.pos.y = 0.15f;
+            p.pos.x += std::sin(p.pos.y * 3.0f + p.seed) * 0.003f;
+            p.pos.z += std::cos(p.pos.y * 3.0f + p.seed) * 0.003f;
+
+            Vec4 cp = vp * Vec4(p.pos, 1.0f);
+            if (cp.w > 0.2f && cp.z > 0.0f && cp.z < cp.w) {
+                float inv_w = 1.0f / cp.w;
+                float ndc_x = cp.x * inv_w;
+                float ndc_y = cp.y * inv_w;
+                float ndc_z = cp.z * inv_w;
+                if (ndc_x >= -1.0f && ndc_x <= 1.0f && ndc_y >= -1.0f && ndc_y <= 1.0f) {
+                    int sx = static_cast<int>((ndc_x * 0.5f + 0.5f) * kWidth);
+                    int sy = static_cast<int>((1.0f - (ndc_y * 0.5f + 0.5f)) * kHeight);
+                    if (sx >= 0 && sx < kWidth - 1 && sy >= 0 && sy < kHeight - 1) {
+                        float depth = ndc_z;
+                        if (depth < fb.get_depth(sx, sy)) {
+                            fb.set_pixel(sx, sy, 0xFFFFDD66);
+                            fb.set_pixel(sx + 1, sy, 0x88FFAA33);
+                            fb.set_pixel(sx, sy + 1, 0x88FFAA33);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply Atmospheric Fog, Glowing Bloom, Vignette, and Color Grading!
+        post_processor.apply(fb, post_cfg);
 
         // Mini-map in top-right corner
         int mm_x = kWidth - 110;

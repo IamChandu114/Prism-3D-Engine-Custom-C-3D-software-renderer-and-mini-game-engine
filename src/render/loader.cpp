@@ -170,4 +170,181 @@ TextureData make_checkerboard(int size, uint32_t c0, uint32_t c1) {
     return td;
 }
 
+// ── Procedural Stone, Floor, Crystal, Metal ───────────────────────────────────
+
+static inline float hash2d(int x, int y) {
+    int n = x + y * 57;
+    n = (n << 13) ^ n;
+    return (1.0f - static_cast<float>((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) /
+                       1073741824.0f) *
+               0.5f +
+           0.5f;
+}
+
+TextureData make_stone_wall_texture(int size) {
+    TextureData td;
+    td.width = size;
+    td.height = size;
+    td.pixels.resize(static_cast<size_t>(size) * size);
+
+    int rows = 4;
+    int cols = 4;
+    int brick_h = size / rows;
+    int brick_w = size / cols;
+    int mortar = std::max(2, size / 32);
+
+    for (int y = 0; y < size; ++y) {
+        int row = y / brick_h;
+        int in_y = y % brick_h;
+        int shift = (row % 2 == 1) ? (brick_w / 2) : 0;
+
+        for (int x = 0; x < size; ++x) {
+            int shifted_x = (x + shift) % size;
+            int col = shifted_x / brick_w;
+            int in_x = shifted_x % brick_w;
+
+            bool is_mortar = (in_y < mortar) || (in_x < mortar);
+            float noise = hash2d(x, y) * 0.25f - 0.125f;
+
+            uint8_t r, g, b;
+            if (is_mortar) {
+                r = static_cast<uint8_t>(std::clamp(45.0f + noise * 50.0f, 0.0f, 255.0f));
+                g = static_cast<uint8_t>(std::clamp(48.0f + noise * 50.0f, 0.0f, 255.0f));
+                b = static_cast<uint8_t>(std::clamp(55.0f + noise * 50.0f, 0.0f, 255.0f));
+            } else {
+                float brick_seed = hash2d(col, row);
+                float base = 130.0f + brick_seed * 40.0f + noise * 70.0f;
+
+                if (in_x < mortar * 2 || in_y < mortar * 2)
+                    base += 35.0f;
+                if (in_x > brick_w - mortar * 2 || in_y > brick_h - mortar * 2)
+                    base -= 40.0f;
+
+                r = static_cast<uint8_t>(std::clamp(base * 0.95f, 0.0f, 255.0f));
+                g = static_cast<uint8_t>(std::clamp(base * 0.98f, 0.0f, 255.0f));
+                b = static_cast<uint8_t>(std::clamp(base * 1.10f, 0.0f, 255.0f));
+            }
+            td.pixels[static_cast<size_t>(y) * size + x] = (0xFFu << 24) |
+                                                           (static_cast<uint32_t>(r) << 16) |
+                                                           (static_cast<uint32_t>(g) << 8) | b;
+        }
+    }
+    return td;
+}
+
+TextureData make_flagstone_floor_texture(int size) {
+    TextureData td;
+    td.width = size;
+    td.height = size;
+    td.pixels.resize(static_cast<size_t>(size) * size);
+
+    int tile_size = size / 4;
+    int groove = std::max(2, size / 32);
+
+    for (int y = 0; y < size; ++y) {
+        int ty = y / tile_size;
+        int in_y = y % tile_size;
+
+        for (int x = 0; x < size; ++x) {
+            int tx = x / tile_size;
+            int in_x = x % tile_size;
+
+            bool is_groove = (in_y < groove) || (in_x < groove);
+            float noise = hash2d(x, y) * 0.3f - 0.15f;
+
+            uint8_t r, g, b;
+            if (is_groove) {
+                r = 30;
+                g = 32;
+                b = 38;
+            } else {
+                float tile_seed = hash2d(tx, ty);
+                float val = 90.0f + tile_seed * 30.0f + noise * 60.0f;
+
+                int dist_border = std::min({in_x, tile_size - in_x, in_y, tile_size - in_y});
+                if (dist_border < groove * 2)
+                    val -= 25.0f;
+
+                r = static_cast<uint8_t>(std::clamp(val * 0.92f, 0.0f, 255.0f));
+                g = static_cast<uint8_t>(std::clamp(val * 0.95f, 0.0f, 255.0f));
+                b = static_cast<uint8_t>(std::clamp(val * 1.05f, 0.0f, 255.0f));
+            }
+            td.pixels[static_cast<size_t>(y) * size + x] = (0xFFu << 24) |
+                                                           (static_cast<uint32_t>(r) << 16) |
+                                                           (static_cast<uint32_t>(g) << 8) | b;
+        }
+    }
+    return td;
+}
+
+TextureData make_glowing_crystal_texture(int size) {
+    TextureData td;
+    td.width = size;
+    td.height = size;
+    td.pixels.resize(static_cast<size_t>(size) * size);
+
+    float cx = size * 0.5f;
+    float cy = size * 0.5f;
+    float max_r = size * 0.5f;
+
+    for (int y = 0; y < size; ++y) {
+        float dy = y - cy;
+        for (int x = 0; x < size; ++x) {
+            float dx = x - cx;
+            float dist = std::sqrt(dx * dx + dy * dy) / max_r;
+            float angle = std::atan2(dy, dx);
+
+            float facets = 0.5f + 0.5f * std::cos(angle * 6.0f);
+            float inner_core = std::clamp(1.0f - dist * 1.2f, 0.0f, 1.0f);
+
+            float r_val = 255.0f * (inner_core * 0.8f + facets * 0.3f);
+            float g_val = 200.0f * (inner_core * 0.9f + facets * 0.4f);
+            float b_val = 80.0f + 175.0f * inner_core;
+
+            uint8_t r = static_cast<uint8_t>(std::clamp(r_val, 0.0f, 255.0f));
+            uint8_t g = static_cast<uint8_t>(std::clamp(g_val, 0.0f, 255.0f));
+            uint8_t b = static_cast<uint8_t>(std::clamp(b_val, 0.0f, 255.0f));
+
+            td.pixels[static_cast<size_t>(y) * size + x] = (0xFFu << 24) |
+                                                           (static_cast<uint32_t>(r) << 16) |
+                                                           (static_cast<uint32_t>(g) << 8) | b;
+        }
+    }
+    return td;
+}
+
+TextureData make_scifi_metal_texture(int size) {
+    TextureData td;
+    td.width = size;
+    td.height = size;
+    td.pixels.resize(static_cast<size_t>(size) * size);
+
+    int border = std::max(2, size / 16);
+
+    for (int y = 0; y < size; ++y) {
+        for (int x = 0; x < size; ++x) {
+            float grain = hash2d(x / 2, y) * 0.15f;
+            float base = 150.0f + grain * 255.0f;
+
+            bool is_rivet = ((x == border * 2 || x == size - border * 2) &&
+                             (y == border * 2 || y == size - border * 2));
+
+            if (x < border || x >= size - border || y < border || y >= size - border) {
+                base -= 50.0f;
+            } else if (is_rivet) {
+                base = 240.0f;
+            }
+
+            uint8_t r = static_cast<uint8_t>(std::clamp(base * 0.95f, 0.0f, 255.0f));
+            uint8_t g = static_cast<uint8_t>(std::clamp(base * 1.0f, 0.0f, 255.0f));
+            uint8_t b = static_cast<uint8_t>(std::clamp(base * 1.15f, 0.0f, 255.0f));
+
+            td.pixels[static_cast<size_t>(y) * size + x] = (0xFFu << 24) |
+                                                           (static_cast<uint32_t>(r) << 16) |
+                                                           (static_cast<uint32_t>(g) << 8) | b;
+        }
+    }
+    return td;
+}
+
 } // namespace prism::render

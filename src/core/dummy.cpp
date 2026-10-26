@@ -1,4 +1,2 @@
-namespace prism::core {
-// Dummy anchor symbol to keep static library translation unit well-formed
-void anchor() noexcept {}
-} // namespace prism::core
+// Intentionally empty translation unit – ensures the prism_core static library
+// has at least one object file on all platforms.

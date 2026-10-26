@@ -5,10 +5,13 @@ add_executable(prism_math_tests
     test_quaternion.cpp
     test_geometry.cpp
     test_intersection.cpp
+    test_framebuffer.cpp
+    test_pipeline.cpp
+    test_rasterizer.cpp
 )
 
 target_link_libraries(prism_math_tests PRIVATE
-    prism_math
+    prism_core
     GTest::gtest_main
 )
 

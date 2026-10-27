@@ -141,9 +141,11 @@ int main(int argc, char* argv[]) {
     auto t_fps_start = t_prev;
     int fps_frame_count = 0;
 
-    // Key press debounce flags
+#if !defined(PRISM_HEADLESS)
+    // Key press debounce flags are only used by the interactive SDL path.
     bool key_1_down = false, key_2_down = false, key_3_down = false;
     bool key_t_down = false, key_b_down = false, key_p_down = false, key_m_down = false;
+#endif
 
     while (window.is_running()) {
         if (headless && frame_count >= headless_frames)

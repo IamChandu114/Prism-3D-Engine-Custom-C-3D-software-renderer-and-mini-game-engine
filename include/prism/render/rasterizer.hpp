@@ -54,6 +54,7 @@ struct RenderConfig {
     bool backface_culling{true};
     bool depth_test{true};
     bool wireframe{false};
+    bool use_simd_edge_tests{false};
 };
 
 // Draw wireframe triangle via Bresenham

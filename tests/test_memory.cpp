@@ -23,12 +23,44 @@ void* operator new(size_t size) {
     return p;
 }
 
+void* operator new[](size_t size) {
+    return ::operator new(size);
+}
+
+void* operator new(size_t size, const std::nothrow_t&) noexcept {
+    try {
+        return ::operator new(size);
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+void* operator new[](size_t size, const std::nothrow_t&) noexcept {
+    return ::operator new(size, std::nothrow);
+}
+
 void operator delete(void* p) noexcept {
     std::free(p);
 }
 
 void operator delete(void* p, size_t) noexcept {
     std::free(p);
+}
+
+void operator delete(void* p, const std::nothrow_t&) noexcept {
+    std::free(p);
+}
+
+void operator delete[](void* p) noexcept {
+    ::operator delete(p);
+}
+
+void operator delete[](void* p, size_t) noexcept {
+    ::operator delete(p);
+}
+
+void operator delete[](void* p, const std::nothrow_t&) noexcept {
+    ::operator delete(p);
 }
 
 using namespace prism;
@@ -132,4 +164,38 @@ TEST(MemoryTest, TiledRendererMatchesBaselineOutput) {
 
     // Almost all pixels must match exactly
     EXPECT_LT(mismatch_count, 10);
+}
+
+TEST(MemoryTest, TiledScalarAndSimdProduceIdenticalFramebuffer) {
+    constexpr int width = 192;
+    constexpr int height = 128;
+    Framebuffer fb(width, height);
+    Camera camera;
+    camera.position = Vec3(0, 1, 3);
+    camera.aspect = static_cast<float>(width) / height;
+    const auto mesh = make_cube();
+    Material material;
+    std::vector<Light> lights(1);
+    lights[0].type = LightType::Directional;
+    lights[0].direction_or_position = normalize(Vec3(0.5f, -1.0f, -0.5f));
+    RenderConfig config;
+    config.backface_culling = true;
+    core::ThreadPool pool(1);
+    TileRasterizer rasterizer;
+    rasterizer.init(width, height);
+
+    fb.clear(0xFF101020);
+    rasterizer.render_tiled(fb, mesh, rotate_y(0.5f) * rotate_x(0.3f), camera, material, lights,
+                            config, pool);
+    std::vector<uint32_t> scalar_color(fb.color_data(), fb.color_data() + fb.total_pixels());
+    std::vector<float> scalar_depth(fb.depth_data(), fb.depth_data() + fb.total_pixels());
+
+    config.use_simd_edge_tests = true;
+    fb.clear(0xFF101020);
+    rasterizer.render_tiled(fb, mesh, rotate_y(0.5f) * rotate_x(0.3f), camera, material, lights,
+                            config, pool);
+    for (size_t i = 0; i < fb.total_pixels(); ++i) {
+        EXPECT_EQ(fb.color_data()[i], scalar_color[i]);
+        EXPECT_FLOAT_EQ(fb.depth_data()[i], scalar_depth[i]);
+    }
 }

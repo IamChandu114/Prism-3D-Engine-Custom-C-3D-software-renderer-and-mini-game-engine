@@ -10,8 +10,9 @@
 
 namespace prism::core {
 
-Window::Window(const std::string& title, int width, int height, bool headless)
+Window::Window([[maybe_unused]] const std::string& title, int width, int height, bool headless)
     : width_(width), height_(height), headless_(headless), is_running_(true) {
+    (void)title;
 #if !defined(PRISM_HEADLESS)
     if (!headless_) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -105,7 +106,8 @@ void Window::poll_events() noexcept {
 #endif
 }
 
-void Window::present(const render::Framebuffer& fb) noexcept {
+void Window::present([[maybe_unused]] const render::Framebuffer& fb) noexcept {
+    (void)fb;
 #if !defined(PRISM_HEADLESS)
     if (headless_ || !texture_)
         return;
